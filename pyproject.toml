@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "npz-generator"
+version = "0.1.0"
+description = "Build deterministic TPU-ready NPZ artifacts from TPC Parquet data"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "numpy>=2.0,<3",
+  "pyarrow>=18,<22",
+]
+
+[project.optional-dependencies]
+dev = [
+  "duckdb>=1.3,<2",
+  "pytest>=8,<9",
+  "ruff>=0.12,<0.13",
+]
+
+[project.scripts]
+npzgen = "npz_generator.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
