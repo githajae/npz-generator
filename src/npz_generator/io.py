@@ -26,6 +26,11 @@ def _json_default(value: object) -> object:
     raise TypeError(f"{type(value).__name__} is not JSON serializable")
 
 
+def format_scale_factor(sf: int | float) -> str:
+    value = float(sf)
+    return str(int(value)) if value.is_integer() else format(value, "g")
+
+
 def artifact_path(
     output_root: Path,
     workload: str,
@@ -34,7 +39,14 @@ def artifact_path(
     kind: str,
     name: str,
 ) -> Path:
-    return output_root / workload / f"sf{sf}" / table / kind / f"{name}.npz"
+    return (
+        output_root
+        / workload
+        / f"sf{format_scale_factor(sf)}"
+        / table
+        / kind
+        / f"{name}.npz"
+    )
 
 
 def atomic_save_npz(path: Path, arrays: Mapping[str, np.ndarray]) -> str:

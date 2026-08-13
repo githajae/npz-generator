@@ -8,6 +8,7 @@ from .builders import (
 )
 from .config import BuildConfig
 from .finalize import finalize_manifest
+from .loader import load_dataset
 from .registry import RelationshipSpec, StringSpec, WorkloadSpec
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "build_string_npz",
     "build_system_npz",
     "finalize_manifest",
+    "load_dataset",
 ]

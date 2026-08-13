@@ -12,6 +12,8 @@ from npz_generator import (
     build_index_npz,
     build_string_npz,
     build_system_npz,
+    finalize_manifest,
+    load_dataset,
 )
 
 
@@ -93,6 +95,62 @@ def test_pk_fk_index_maps_child_rows_to_parent_physical_positions(tmp_path):
         np.testing.assert_array_equal(
             artifact["__gather_idx_to_orders__"], [0, 0, 2, 1, -1]
         )
+    metadata = json.loads(output.with_suffix(".meta.json").read_text())
+    assert metadata["lookup_strategy"] == "dense_integer"
+
+
+def test_composite_pk_fk_index_uses_registered_key_tuple(tmp_path):
+    config = _config(tmp_path)
+    _write_parts(
+        config.input_root,
+        "partsupp",
+        [pa.table({"ps_partkey": [1, 1, 2], "ps_suppkey": [10, 20, 10]})],
+    )
+    _write_parts(
+        config.input_root,
+        "lineitem",
+        [pa.table({"l_partkey": [1, 2, 1], "l_suppkey": [20, 10, 99]})],
+    )
+
+    output = build_index_npz(config, "tpch", 1, "lineitem", "partsupp")
+
+    with np.load(output, allow_pickle=False) as artifact:
+        np.testing.assert_array_equal(
+            artifact["__gather_idx_to_partsupp__"], [1, 2, -1]
+        )
+    metadata = json.loads(output.with_suffix(".meta.json").read_text())
+    assert metadata["lookup_strategy"] == "external_join"
+
+
+def test_tpcds_role_names_disambiguate_repeated_dimension_links(tmp_path):
+    config = _config(tmp_path)
+    table_dir = config.input_root / "tpcds" / "sf1" / "date_dim"
+    table_dir.mkdir(parents=True)
+    pq.write_table(pa.table({"d_date_sk": [100, 200]}), table_dir / "part-1.parquet")
+    table_dir = config.input_root / "tpcds" / "sf1" / "web_sales"
+    table_dir.mkdir(parents=True)
+    pq.write_table(
+        pa.table({"ws_sold_date_sk": [200, 100]}), table_dir / "part-1.parquet"
+    )
+
+    output = build_index_npz(config, "tpcds", 1, "web_sales", "sold_date")
+
+    with np.load(output, allow_pickle=False) as artifact:
+        np.testing.assert_array_equal(artifact["__gather_idx_to_sold_date__"], [1, 0])
+
+
+def test_integral_float_scale_factor_uses_canonical_sf_directory(tmp_path):
+    config = _config(tmp_path)
+    _write_parts(
+        config.input_root,
+        "region",
+        [pa.table({"r_regionkey": [0]})],
+    )
+
+    output = build_column_npz(config, "tpch", 1.0, "region", "r_regionkey")
+
+    assert "sf1" in output.parts
+    assert "sf1.0" not in output.parts
 
 
 def test_each_builder_emits_an_independent_metadata_sidecar(tmp_path):
@@ -135,3 +193,26 @@ def test_decimal_statistics_are_json_serializable(tmp_path):
     metadata = json.loads(output.with_suffix(".meta.json").read_text())
     assert metadata["minimum"] == "1.25"
     assert metadata["maximum"] == "9.75"
+
+
+def test_finalized_dataset_loads_as_kernel_table_dictionary(tmp_path):
+    config = _config(tmp_path)
+    _write_parts(
+        config.input_root,
+        "region",
+        [pa.table({"r_regionkey": [0, 1], "r_name": ["AFRICA", "AMERICA"]})],
+    )
+    build_column_npz(config, "tpch", 1, "region", "r_regionkey")
+    build_string_npz(config, "tpch", 1, "region", "r_name")
+    build_system_npz(config, "tpch", 1, "region", "__valid_mask__")
+    dataset = config.output_root / "tpch" / "sf1"
+    finalize_manifest(config.output_root, "tpch", 1)
+
+    tables = load_dataset(
+        dataset,
+        {"region": {"r_regionkey", "r_name", "__valid_mask__"}},
+    )
+
+    np.testing.assert_array_equal(tables["region"]["r_regionkey"], [0, 1])
+    np.testing.assert_array_equal(tables["region"]["r_name"], [0, 1])
+    np.testing.assert_array_equal(tables["region"]["__valid_mask__"], [True, True])

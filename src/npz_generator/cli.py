@@ -37,6 +37,8 @@ def _parser() -> argparse.ArgumentParser:
         subparser.add_argument("--snapshot", type=Path)
         subparser.add_argument("--batch-size", type=int, default=1_000_000)
         subparser.add_argument("--padding-multiple", type=int, default=1)
+        subparser.add_argument("--temp-root", type=Path)
+        subparser.add_argument("--duckdb-memory-limit", default="8GB")
         if command == "build-string":
             subparser.add_argument("--legacy-string-pools", action="store_true")
 
@@ -60,6 +62,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         snapshot_path=arguments.snapshot,
         batch_size=arguments.batch_size,
         padding_multiple=arguments.padding_multiple,
+        temp_root=arguments.temp_root,
+        duckdb_memory_limit=arguments.duckdb_memory_limit,
         emit_legacy_string_pools=getattr(arguments, "legacy_string_pools", False),
     )
     builders: dict[str, Callable[..., Path]] = {

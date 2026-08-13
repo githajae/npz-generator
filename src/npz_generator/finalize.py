@@ -7,9 +7,11 @@ import os
 import tempfile
 from pathlib import Path
 
+from .io import format_scale_factor
+
 
 def finalize_manifest(output_root: Path, workload: str, sf: int | float) -> Path:
-    dataset_root = output_root / workload / f"sf{sf}"
+    dataset_root = output_root / workload / f"sf{format_scale_factor(sf)}"
     sidecars = sorted(dataset_root.glob("**/*.meta.json"))
     if not sidecars:
         raise FileNotFoundError(f"no artifact sidecars found under {dataset_root}")

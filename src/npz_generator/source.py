@@ -12,6 +12,8 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from .io import format_scale_factor
+
 _NATURAL_NUMBER = re.compile(r"(\d+)")
 
 
@@ -55,7 +57,7 @@ class ParquetSource:
 def _source_candidates(
     root: Path, workload: str, sf: int | float, table: str
 ) -> list[Path]:
-    sf_text = str(sf).rstrip("0").rstrip(".") if isinstance(sf, float) else str(sf)
+    sf_text = format_scale_factor(sf)
     return [
         root / workload / f"sf{sf_text}" / table,
         root / f"sf{sf_text}" / table,

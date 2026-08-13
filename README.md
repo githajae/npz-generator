@@ -66,6 +66,20 @@ prefix predicates, and registered token columns provide word-level matching.
 Use `--legacy-string-pools` only for kernels that still require byte-offset
 substring scans.
 
+For an end-to-end compatibility check against an existing kernel dataset:
+
+```bash
+tpchgen-cli parquet -s 1 --parts 8 --output-dir /data/parquet-sf1
+python scripts/build_dataset.py \
+  --input-root /data/parquet-sf1 --output-root /data/generated-sf1 \
+  --workload tpch --sf 1 --legacy-string-pools
+python scripts/compare_reference.py \
+  --generated /data/generated-sf1/tpch/sf1 --reference /data/sf1
+python scripts/verify_queries.py \
+  --generated-data /data/generated-sf1/tpch/sf1 --reference-data /data/sf1 \
+  --kernel-project /workspace/ntdb-tpu-optimization --queries 1-22
+```
+
 ## Persistent-index policy
 
 Only registered child-to-parent PK-FK gathers are emitted. Reverse CSR,
@@ -73,4 +87,3 @@ start/count, fanout ordinals, repeat counts, predicate indexes, and covering
 indexes are intentionally not generated; kernels must derive them on the fly.
 
 See [docs/spec.md](docs/spec.md) for the full contract.
-
