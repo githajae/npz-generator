@@ -291,6 +291,11 @@ def _tpcds_relations() -> list[RelationshipSpec]:
         }
     definitions["catalog_returns"].update(
         {
+            "catalog_sales": (
+                ("cr_order_number", "cr_item_sk"),
+                "catalog_sales",
+                ("cs_order_number", "cs_item_sk"),
+            ),
             "call_center": ("cr_call_center_sk", "call_center", "cc_call_center_sk"),
             "catalog_page": (
                 "cr_catalog_page_sk",
@@ -305,6 +310,16 @@ def _tpcds_relations() -> list[RelationshipSpec]:
         "wr_web_page_sk",
         "web_page",
         "wp_web_page_sk",
+    )
+    definitions["web_returns"]["web_sales"] = (
+        ("wr_order_number", "wr_item_sk"),
+        "web_sales",
+        ("ws_order_number", "ws_item_sk"),
+    )
+    definitions["store_returns"]["store_sales"] = (
+        ("sr_ticket_number", "sr_item_sk"),
+        "store_sales",
+        ("ss_ticket_number", "ss_item_sk"),
     )
     definitions.update(
         {
@@ -327,6 +342,28 @@ def _tpcds_relations() -> list[RelationshipSpec]:
             },
             "household_demographics": {
                 "income_band": ("hd_income_band_sk", "income_band", "ib_income_band_sk")
+            },
+            "promotion": {
+                "item": ("p_item_sk", "item", "i_item_sk"),
+            },
+            "store": {
+                "closed_date": ("s_closed_date_sk", "date_dim", "d_date_sk"),
+            },
+            "call_center": {
+                "open_date": ("cc_open_date_sk", "date_dim", "d_date_sk"),
+                "closed_date": ("cc_closed_date_sk", "date_dim", "d_date_sk"),
+            },
+            "web_site": {
+                "open_date": ("web_open_date_sk", "date_dim", "d_date_sk"),
+                "close_date": ("web_close_date_sk", "date_dim", "d_date_sk"),
+            },
+            "web_page": {
+                "creation_date": (
+                    "wp_creation_date_sk",
+                    "date_dim",
+                    "d_date_sk",
+                ),
+                "access_date": ("wp_access_date_sk", "date_dim", "d_date_sk"),
             },
         }
     )

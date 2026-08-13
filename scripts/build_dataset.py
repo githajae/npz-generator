@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 import pyarrow as pa
@@ -38,6 +39,11 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--workload", choices=("tpch", "tpcds"), required=True)
     parser.add_argument("--sf", type=float, required=True)
     parser.add_argument("--tables", help="comma-separated; default discovers all")
+    parser.add_argument(
+        "--columns-json",
+        type=Path,
+        help="optional {table: [column, ...]} source projection",
+    )
     parser.add_argument("--batch-size", type=int, default=1_000_000)
     parser.add_argument("--temp-root", type=Path)
     parser.add_argument("--duckdb-memory-limit", default="8GB")
@@ -68,6 +74,11 @@ def main() -> int:
         emit_legacy_string_pools=arguments.legacy_string_pools,
     )
     artifacts = 0
+    column_projection = (
+        json.loads(arguments.columns_json.read_text())
+        if arguments.columns_json
+        else None
+    )
     for table in tables:
         source = discover_source(
             config.input_root, arguments.workload, arguments.sf, table
@@ -76,7 +87,18 @@ def main() -> int:
             config, arguments.workload, arguments.sf, table, "__valid_mask__"
         )
         artifacts += 1
+        selected = (
+            set(column_projection[table]) if column_projection is not None else None
+        )
+        if selected is not None:
+            missing = selected - set(source.schema.names)
+            if missing:
+                raise ValueError(
+                    f"{table} is missing projected columns {sorted(missing)}"
+                )
         for field in source.schema:
+            if selected is not None and field.name not in selected:
+                continue
             if pa.types.is_string(field.type) or pa.types.is_large_string(field.type):
                 build_string_npz(
                     config, arguments.workload, arguments.sf, table, field.name

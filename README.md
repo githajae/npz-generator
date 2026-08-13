@@ -72,7 +72,8 @@ For an end-to-end compatibility check against an existing kernel dataset:
 tpchgen-cli parquet -s 1 --parts 8 --output-dir /data/parquet-sf1
 python scripts/build_dataset.py \
   --input-root /data/parquet-sf1 --output-root /data/generated-sf1 \
-  --workload tpch --sf 1 --legacy-string-pools
+  --workload tpch --sf 1 --legacy-string-pools \
+  --columns-json examples/ntdb_tpch_columns.json
 python scripts/compare_reference.py \
   --generated /data/generated-sf1/tpch/sf1 --reference /data/sf1
 python scripts/verify_queries.py \
