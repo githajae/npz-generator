@@ -158,7 +158,7 @@ def build_column_npz(
             valid[offset:end] = batch_valid
             offset = end
         arrays: dict[str, np.ndarray] = {col_name: values}
-        if field.nullable or output_count != row_count or not bool(np.all(valid)):
+        if output_count != row_count or not bool(np.all(valid)):
             arrays[f"__valid__{col_name}"] = valid
         path = artifact_path(
             config.output_root, workload, sf, tname, "column", col_name

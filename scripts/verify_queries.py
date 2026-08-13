@@ -53,6 +53,13 @@ def _packed(module: object, tables: dict[str, dict[str, object]]) -> np.ndarray:
     return np.asarray(host_packed)
 
 
+def _device_tables(
+    tables: dict[str, dict[str, np.ndarray]],
+) -> dict[str, dict[str, object]]:
+    staged = jax.tree.map(lambda value: np.array(value, copy=True, order="C"), tables)
+    return jax.tree.map(jax.device_put, staged)
+
+
 def main() -> int:
     arguments = _arguments()
     source = arguments.kernel_project / "src"
@@ -66,8 +73,8 @@ def main() -> int:
         projection = queries_projection(generated, [query])
         reference_host = load_reference(arguments.reference_data, projection)
         generated_host = load_generated(arguments.generated_data, projection)
-        reference_device = jax.tree.map(jax.device_put, reference_host)
-        generated_device = jax.tree.map(jax.device_put, generated_host)
+        reference_device = _device_tables(reference_host)
+        generated_device = _device_tables(generated_host)
         module = importlib.import_module(f"ntdb.queries.q{query}")
         reference_output = _packed(module, reference_device)
         generated_output = _packed(module, generated_device)
