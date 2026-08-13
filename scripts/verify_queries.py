@@ -69,24 +69,33 @@ def main() -> int:
     from ntdb_tpu.projection import queries_projection
 
     queries = _query_numbers(arguments.queries)
+    passed = 0
+    errors: list[tuple[int, str]] = []
     for query in queries:
-        projection = queries_projection(generated, [query])
-        reference_host = load_reference(arguments.reference_data, projection)
-        generated_host = load_generated(arguments.generated_data, projection)
-        reference_device = _device_tables(reference_host)
-        generated_device = _device_tables(generated_host)
-        module = importlib.import_module(f"ntdb.queries.q{query}")
-        reference_output = _packed(module, reference_device)
-        generated_output = _packed(module, generated_device)
-        _synchronize((reference_output, generated_output))
-        np.testing.assert_array_equal(
-            generated_output,
-            reference_output,
-            err_msg=f"Q{query} output differs",
-        )
-        print(f"Q{query}: PASS {generated_output.shape}", flush=True)
-    print(f"PASS: {len(queries)} queries match on {jax.devices()}")
-    return 0
+        try:
+            projection = queries_projection(generated, [query])
+            reference_host = load_reference(arguments.reference_data, projection)
+            generated_host = load_generated(arguments.generated_data, projection)
+            reference_device = _device_tables(reference_host)
+            generated_device = _device_tables(generated_host)
+            module = importlib.import_module(f"ntdb.queries.q{query}")
+            reference_output = _packed(module, reference_device)
+            generated_output = _packed(module, generated_device)
+            _synchronize((reference_output, generated_output))
+            np.testing.assert_array_equal(
+                generated_output,
+                reference_output,
+                err_msg=f"Q{query} output differs",
+            )
+            passed += 1
+            print(f"Q{query}: PASS {generated_output.shape}", flush=True)
+        except Exception as error:  # continue to audit every deployed kernel
+            errors.append((query, f"{type(error).__name__}: {error}"))
+            print(f"Q{query}: ERROR {errors[-1][1]}", flush=True)
+    print(f"SUMMARY: {passed}/{len(queries)} queries match on {jax.devices()}")
+    for query, error in errors:
+        print(f"Q{query}: {error}")
+    return 1 if errors else 0
 
 
 if __name__ == "__main__":
